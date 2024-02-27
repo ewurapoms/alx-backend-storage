@@ -5,6 +5,7 @@ from pymongo import MongoClient
 
 
 def top_ips(collection):
+    """ displays the function """
     pipeline = [
         {"$group": {"_id": "$remote_addr", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
