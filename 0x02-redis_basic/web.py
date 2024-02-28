@@ -5,40 +5,41 @@ import requests
 import time
 from functools import wraps
 
+cache = {}
 
-def count_url_access(func):
-    """ accessing function"""
-    cache = {}
 
+def get_page(url: str) -> str:
+    """
+    checks if the URL is cached and not expired
+    and make the request and retrieve the HTML content
+    """
+    if url in cache and cache[url]['expiration'] > time.time():
+        cache[url]['count'] += 1
+        return cache[url]['content']
+    response = requests.get(url)
+    con = response.text
+    cache[url] = {'content': con, 'expiration': time.time() + 10, 'count': 1}
+    return con
+
+
+def cache_result(func):
+    """
+    Decorator to track URL access count
+    and cache the result
+    """
+    @wraps(func)
     def wrapper(url):
-        """wrapper function"""
-        if url in cache:
-            # Check if cached entry is still valid (within 10 seconds)
-            if time.time() - cache[url]['timestamp'] < 10:
-                cache[url]['count'] += 1
-                return cache[url]['content']
-
-        # If not cached or expired, fetch the page content
-        response = func(url)
-        content = response.text
-
-        # Update cache with new content and reset access count
-        cache[url] = {'content': content, 'count': 1, 'timestamp': time.time()}
-
-        return content
-
+        if url in cac and cac[url]['expiration'] > time.time():
+            cac[url]['count'] += 1
+            return cac[url]['content']
+        con = func(url)
+        cac[url] = {'content': con, 'expiration': time.time() + 10, 'count': 1}
+        return con
     return wrapper
 
 
-@count_url_access
-def get_page(url: str) -> str:
-    """ main function"""
+@cache_result
+def get_page_with_decorator(url: str) -> str:
+    """ prints the output"""
     response = requests.get(url)
-    return response
-
-
-# Example usage
-url = "http://slowwly.robertomurray.co.uk/delay/5000/url/" \
-      "http://www.example.com"
-for _ in range(5):
-    print(get_page(url))
+    return response.text
