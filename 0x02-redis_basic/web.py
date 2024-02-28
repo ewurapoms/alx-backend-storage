@@ -5,73 +5,46 @@ import requests
 import time
 from functools import wraps
 
-# Dictionary to store cached results
+# Dictionary to store cached pages and access counts
 cache = {}
 
 
+def cache_with_expiry(expiry=10):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(url):
+            if url in cache:
+                # Check if the cached entry is still valid (within expiry time)
+                if time.time() - cache[url]['timestamp'] < expiry:
+                    cache[url]['count'] += 1
+                    return cache[url]['content']
+
+            # If not cached or expired, fetch the page content
+            content = func(url)
+
+            # Update cache with new content and reset access count
+            cache[url] = {
+                'content': content,
+                'count': 1,
+                'timestamp': time.time()
+            }
+            return content
+
+        return wrapper
+
+    return decorator
+
+
+@cache_with_expiry(expiry=10)
 def get_page(url: str) -> str:
     """
     Retrieve the HTML content of a URL.
 
-    The function checks if the URL is cached and not expired.
-    If the content is already cached, it returns the cached content.
-    Otherwise, it makes a request to the URL, retrieves the HTML content,
-    caches the result with a 10-second expiration time, and returns the content.
-
-    Args:
-        url (str): The URL to retrieve the HTML content from.
-
-    Returns:
-        str: The HTML content of the URL.
-    """
-    if url in cache and cache[url]['expiration'] > time.time():
-        cache[url]['count'] += 1
-        return cache[url]['content']
-
-    response = requests.get(url)
-    content = response.text
-
-    cache[url] = {'content': content, 'expiration': time.time() + 10, 'count': 1}
-
-    return content
-
-
-def cache_result(func):
-    """
-    Decorator to track URL access count and cache the result.
-
-    The decorator wraps a function and adds caching and access count tracking behavior.
-    It checks if the URL is already cached and not expired.
-    If the content is cached, it returns the cached content.
-    Otherwise, it calls the wrapped function to retrieve the content,
-    caches the result with a 10-second expiration time, and returns the content.
-
-    Args:
-        func (function): The function to be wrapped.
-
-    Returns:
-        function: The wrapper function.
-    """
-    @wraps(func)
-    def wrapper(url):
-        if url in cache and cache[url]['expiration'] > time.time():
-            cache[url]['count'] += 1
-            return cache[url]['content']
-
-        content = func(url)
-        cache[url] = {'content': content, 'expiration': time.time() + 10, 'count': 1}
-        return content
-
-    return wrapper
-
-
-@cache_result
-def get_page_with_decorator(url: str) -> str:
-    """
-    Retrieve the HTML content of a URL using a decorator.
-
-    This function is a decorated version that provides the same functionality as `get_page`.
-    It uses the `cache_result` decorator to add caching and access count tracking behavior.
+    The function uses the requests module to obtain
+    the HTML content of the given URL.
+    It also tracks the number of times the URL was
+    accessed and caches the result with
+    an expiration time of 10 seconds.
 
     Args:
         url (str): The URL to retrieve the HTML content from.
